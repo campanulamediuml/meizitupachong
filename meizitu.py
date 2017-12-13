@@ -5,6 +5,7 @@ import random
 from bs4 import BeautifulSoup
 from multiprocessing import Pool  
 from multiprocessing.dummy import Pool as ThreadPool
+import os
 
 user_agent_list = [
     "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 "
@@ -101,16 +102,21 @@ def get_htmlsoup(url):
     return requests.get(url,headers=my_headers).content
 
 def get_comment_list(url):
-    page_soup = get_htmlsoup(url)
-    pic_list = page_soup.split('<li>')
-    comment_list = []
-    for i in pic_list:
-        j = i.split('</li>')
-        for z in j:
-            if '<a href="/htm/' and 'target="_blank"><span>' in z:
-                url = z.split()[1][6:-1]
-                comment_list.append(url)
-    return comment_list
+    try:
+        page_soup = get_htmlsoup(url)
+        pic_list = page_soup.split('<li>')
+        comment_list = []
+        for i in pic_list:
+            j = i.split('</li>')
+            for z in j:
+                if '<a href="/htm/' and 'target="_blank"><span>' in z:
+                    url = z.split()[1][6:-1]
+                    comment_list.append(url)
+        for i in comment_list:
+            open('url_list.txt','a').write('https://www.ttt446.com'+i+'\n')
+    except Exception,e:
+        print e
+
 
 def get_comment_url(index):
     url = 'https://www.ttt446.com/htm/piclist'+str(index)+'/'
@@ -119,20 +125,17 @@ def get_comment_url(index):
     for i in range(1,int(max_page)+1):
         url_list.append(url+str(i)+'.htm')
     pool = ThreadPool(70)
-    comment_list = pool.map(get_comment_list,url_list)
+    pool.map(get_comment_list,url_list)
     pool.close()
-    result = []
-    for i in comment_list:
-        result.extend(i)
-    for i in result:
-        open('url_list.txt','a').write('https://www.ttt446.com'+i+'\n')
+    print url
 
 def get_all_comment_url():
     index = [1,2,3,4,5,6,7,8,9]
     for i in index:
         try:
             get_comment_url(i)
-        except:
+        except Exception,e:
+            print e
             continue
 
 def get_pic_list(url):
@@ -142,6 +145,8 @@ def get_pic_list(url):
         pic_list = [pic_list[0].split('<br />')[-1]] + pic_list[1:]
         for i in pic_list:
             pic_url = i.split()[1][5:-2]
+            if pic_url[-2:] == 'jp' or pic_url[-2:] == 'pn':
+                pic_url+='g'
             open('pic_url_list.txt','a').write(pic_url+'\n')
     except Exception,e:
         print url.strip()
@@ -150,8 +155,14 @@ def get_pic_list(url):
 
 
 def download_picture(url):
-    file_name = url.strip().split['/'][-1]
-    open('porn_pic/'+file_name,'w').write(get_htmlsoup(url.strip()))
+    try:
+        url = url.strip()
+        if url[-2:] == 'jp' or url[-2:] == 'pn':
+            url+='g'
+        file_name = url.strip().split('/')[-1]
+        open('porn_pic/'+file_name,'w').write(get_htmlsoup(url.strip()))
+    except:
+        pass
    
 def run():
     open('url_list.txt','a')
@@ -172,6 +183,9 @@ def run():
                 os.mkdir('porn_pic')
             except:
                 pass
+            # for i in pic_list:
+            #     download_picture(i)
+
             pool = ThreadPool(30)
             pool.map(download_picture,pic_list)
             pool.close()
